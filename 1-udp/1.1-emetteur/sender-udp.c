@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
     hints.ai_family = AF_UNSPEC;    // IPv4 ou IPv6
     hints.ai_socktype = SOCK_DGRAM; // mode paquet
     hints.ai_protocol = IPPROTO_UDP; // Protocole UDP
+    hints.ai_flags =  AI_NUMERICSERV; 
 
     //  Obtenir les informations d'adresse de l'hôte
     CHKA(getaddrinfo(ip_addr, port, &hints, &res));
