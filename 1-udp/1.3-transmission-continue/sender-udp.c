@@ -24,7 +24,6 @@
         }                                                                      \
     } while (0)
 
-
 noreturn void usage(const char *msg)
 {
     fprintf(stderr, "usage: %s ip_dest port_dest\n", msg);
@@ -62,9 +61,9 @@ int main(int argc, char *argv[])
 
     // Préparation de l'adresse distante
     struct addrinfo hints = {0}, *res;
-    hints.ai_family = AF_INET6; // Accepte IPv6
+    hints.ai_family = AF_UNSPEC; // Accepte IPv4 et IPv6
     hints.ai_socktype = SOCK_DGRAM; // Socket UDP
-    hints.ai_flags =  AI_NUMERICSERV;
+    hints.ai_flags = AI_NUMERICSERV;
 
     // Obtenir les informations d'adresse distante
     CHKA(getaddrinfo(ip_dest, port_dest, &hints, &res));
@@ -72,9 +71,6 @@ int main(int argc, char *argv[])
     // Création du socket
     int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     CHK(sockfd);
-
-    int value = 0;
-    CHK(setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &value, sizeof(value)));
 
     // Établir une connexion avec l'adresse distante
     CHK(connect(sockfd, res->ai_addr, res->ai_addrlen));

@@ -25,7 +25,6 @@
         }                                                                      \
     } while (0)
 
-
 noreturn void usage(const char *msg)
 {
     fprintf(stderr, "usage: %s port_local\n", msg);
@@ -43,7 +42,6 @@ void copie(int src, int dst)
         perror("read");
         exit(EXIT_FAILURE);
     }
-
 }
 
 void quit(int signo)
@@ -59,10 +57,10 @@ int main(int argc, char *argv[])
     const char *port = argv[1];
 
     // Préparation de l'adresse locale
-    struct addrinfo hints ={0}, *res;
+    struct addrinfo hints = {0}, *res;
     hints.ai_family = AF_INET6;      // Accepte IPv4 et IPv6
     hints.ai_socktype = SOCK_DGRAM;   // Socket UDP
-    hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;      // Ecouter sur toutes les interfaces
+    hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;      // Écouter sur toutes les interfaces
 
     // Obtenir les informations d'adresse locale
     CHKA(getaddrinfo(NULL, port, &hints, &res));
@@ -70,10 +68,6 @@ int main(int argc, char *argv[])
     // Création du socket
     int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     CHK(sockfd);
-
-    // Configuration du socket pour accepter IPv4 et IPv6
-    int value = 0;
-    CHK(setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &value, sizeof(value)));
 
     // Association du socket à l'adresse et au port local
     CHK(bind(sockfd, res->ai_addr, res->ai_addrlen));
@@ -85,14 +79,16 @@ int main(int argc, char *argv[])
     sa.sa_flags = 0;
     CHK(sigaction(SIGTERM, &sa, NULL));
 
+    freeaddrinfo(res);
+
     // Réception des données
     for (;;) {
         copie(sockfd, STDOUT_FILENO);
     }
 
     // Libérer la mémoire de l'adresse
-    freeaddrinfo(res);
     close(sockfd);
+
 
     return 0;
 }
