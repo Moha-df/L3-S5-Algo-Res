@@ -33,6 +33,19 @@ noreturn void usage(const char *msg)
     exit(EXIT_FAILURE);
 }
 
+void copie(int src, int dst)
+{
+    char buf[1024];
+    ssize_t n;
+    while ((n = read(src, buf, sizeof(buf))) > 0) {
+        write(dst, buf, n);
+    }
+    if (n < 0) {
+        perror("read");
+        exit(EXIT_FAILURE);
+    }
+}
+
 void process_data()
 {
     sleep(1 + rand() % 3);
@@ -52,6 +65,42 @@ int main(int argc, char *argv[])
 
     /* initialisation du générateur pseudo-aléatoire */
     srand(time(NULL));
+
+    const char *port = argv[1];
+
+    struct addrinfo hints = {0}, *res;
+    hints.ai_family = AF_INET6;      // Accepte IPv4 et IPv6
+    hints.ai_socktype = SOCK_DGRAM;   // Socket UDP
+    hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;      // Écouter sur toutes les interfaces
+
+    // Obtenir les informations d'adresse locale
+    CHKA(getaddrinfo(NULL, port, &hints, &res));
+
+    // Création du socket
+    int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    CHK(sockfd);
+
+    // Association du socket à l'adresse et au port local
+    CHK(bind(sockfd, res->ai_addr, res->ai_addrlen));
+
+    // Gestion du signal SIGTERM
+    struct sigaction sa;
+    sa.sa_handler = quit;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    CHK(sigaction(SIGTERM, &sa, NULL));
+
+    freeaddrinfo(res);
+
+    // Réception des données
+    for (;;) {
+        copie(sockfd, STDOUT_FILENO);
+    }
+
+    // Libérer la mémoire de l'adresse
+    close(sockfd);
+
+
 
     return 0;
 }
