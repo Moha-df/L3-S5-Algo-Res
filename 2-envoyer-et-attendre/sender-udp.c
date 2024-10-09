@@ -24,63 +24,73 @@
         }                                                                      \
     } while (0)
 
+#define BUFFERSIZE 1024  // Définir la taille du tampon de réception
 
-noreturn void usage(const char *msg)
-{
+noreturn void usage(const char *msg) {
     fprintf(stderr, "usage: %s ip_dest port_dest\n", msg);
     exit(EXIT_FAILURE);
 }
 
-
-void copie(int src, int dst)
-{
-    char buf[1024];
+void copie(int src, int sockfd, const struct sockaddr *dest_addr, socklen_t addr_len) {
+    char buf[BUFFERSIZE];
     ssize_t n;
+
     while ((n = read(src, buf, sizeof(buf))) > 0) {
         ssize_t written = 0;
+
+        // Envoi des données par blocs
         while (written < n) {
-            ssize_t res = send(dst, buf + written, n - written, 0);
+            ssize_t res = sendto(sockfd, buf + written, n - written, 0, dest_addr, addr_len);
             if (res < 0) {
-                perror("send");
+                perror("sendto");
                 exit(EXIT_FAILURE);
             }
             written += res;
         }
+
+        // Attente de l'ACK
+        char ack[4]; // Buffer pour l'ACK
+        ssize_t ack_len = recv(sockfd, ack, sizeof(ack), 0);
+        if (ack_len < 0) {
+            perror("recv");
+            exit(EXIT_FAILURE);
+        }
+
+        // Afficher l'ACK
+        if (ack_len > 0) {
+            ack[ack_len] = '\0'; // Terminer l'ACK avec un caractère nul
+            write(STDOUT_FILENO, ack, ack_len);
+        }
     }
+
     if (n < 0) {
         perror("read");
         exit(EXIT_FAILURE);
     }
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     if (argc != 3)
         usage(argv[0]);
-    
+
     const char *ip_dest = argv[1];
     const char *port_dest = argv[2];
 
     // Préparation de l'adresse distante
     struct addrinfo hints = {0}, *res;
-    hints.ai_family = AF_UNSPEC; // Accepte IPv4 et IPv6
-    hints.ai_socktype = SOCK_DGRAM; // Socket UDP
+    hints.ai_family = AF_UNSPEC; 
+    hints.ai_socktype = SOCK_DGRAM; 
     hints.ai_flags = AI_NUMERICSERV;
 
-    // Obtenir les informations d'adresse distante
     CHKA(getaddrinfo(ip_dest, port_dest, &hints, &res));
 
     // Création du socket
     int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     CHK(sockfd);
 
-    // Établir une connexion avec l'adresse distante
-    CHK(connect(sockfd, res->ai_addr, res->ai_addrlen));
-
     // Envoi des données
-    copie(STDIN_FILENO, sockfd);
+    copie(STDIN_FILENO, sockfd, res->ai_addr, res->ai_addrlen);
 
-    // Fermer le socket
     close(sockfd);
     freeaddrinfo(res);
 

@@ -6,7 +6,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
 
 #define CHK(op)                                                                \
@@ -26,61 +25,58 @@
         }                                                                      \
     } while (0)
 
+#define BUFFERSIZE 1024  // Taille fixe des blocs de réception
 
-noreturn void usage(const char *msg)
-{
+noreturn void usage(const char *msg) {
     fprintf(stderr, "usage: %s port_local\n", msg);
     exit(EXIT_FAILURE);
 }
 
-void copie(int src, int dst)
-{
-    char buf[1024];
+void copie(int sockfd) {
+    char buf[BUFFERSIZE];
     ssize_t n;
-    while ((n = read(src, buf, sizeof(buf))) > 0) {
-        write(dst, buf, n);
-    }
-    if (n < 0) {
-        perror("read");
-        exit(EXIT_FAILURE);
+    struct sockaddr_storage sender_addr; 
+    socklen_t sender_addr_len = sizeof(sender_addr);
+
+    while (1) {
+        n = recvfrom(sockfd, buf, BUFFERSIZE, 0, (struct sockaddr *)&sender_addr, &sender_addr_len);
+        if (n < 0) {
+            perror("recvfrom");
+            exit(EXIT_FAILURE);
+        }
+
+        // Écriture des données reçues
+        write(STDOUT_FILENO, buf, n);
+
+        // Envoie un ACK
+        const char *ack = "ACK";
+        sendto(sockfd, ack, strlen(ack), 0, (struct sockaddr *)&sender_addr, sender_addr_len);
     }
 }
 
-void process_data()
-{
-    sleep(1 + rand() % 3);
-    return;
-}
-
-void quit(int signo)
-{
+void quit(int signo) {
     (void)signo;
     exit(EXIT_SUCCESS);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     if (argc != 2)
         usage(argv[0]);
-
-    /* initialisation du générateur pseudo-aléatoire */
-    srand(time(NULL));
 
     const char *port = argv[1];
 
     struct addrinfo hints = {0}, *res;
-    hints.ai_family = AF_INET6;      // Accepte IPv4 et IPv6
-    hints.ai_socktype = SOCK_DGRAM;   // Socket UDP
-    hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;      // Écouter sur toutes les interfaces
+    hints.ai_family = AF_INET6;     
+    hints.ai_socktype = SOCK_DGRAM;  
+    hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;  
 
-    // Obtenir les informations d'adresse locale
     CHKA(getaddrinfo(NULL, port, &hints, &res));
 
     // Création du socket
     int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     CHK(sockfd);
 
-    // Association du socket à l'adresse et au port local
+    // Bind du socket
     CHK(bind(sockfd, res->ai_addr, res->ai_addrlen));
 
     // Gestion du signal SIGTERM
@@ -94,13 +90,10 @@ int main(int argc, char *argv[])
 
     // Réception des données
     for (;;) {
-        copie(sockfd, STDOUT_FILENO);
+        copie(sockfd);
     }
 
-    // Libérer la mémoire de l'adresse
     close(sockfd);
-
-
 
     return 0;
 }
