@@ -38,10 +38,7 @@ void copie(int src, int dst)
     while ((n = read(src, buf, sizeof(buf))) > 0) {
         write(dst, buf, n);
     }
-    if (n < 0) {
-        perror("read");
-        exit(EXIT_FAILURE);
-    }
+    CHK(n);
 }
 
 void quit(int signo)

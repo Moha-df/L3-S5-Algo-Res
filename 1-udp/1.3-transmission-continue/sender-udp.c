@@ -35,20 +35,9 @@ void copie(int src, int dst)
     char buf[1024];
     ssize_t n;
     while ((n = read(src, buf, sizeof(buf))) > 0) {
-        ssize_t written = 0;
-        while (written < n) {
-            ssize_t res = send(dst, buf + written, n - written, 0);
-            if (res < 0) {
-                perror("send");
-                exit(EXIT_FAILURE);
-            }
-            written += res;
-        }
+        write(dst, buf, n);
     }
-    if (n < 0) {
-        perror("read");
-        exit(EXIT_FAILURE);
-    }
+    CHK(n);
 }
 
 int main(int argc, char *argv[])
