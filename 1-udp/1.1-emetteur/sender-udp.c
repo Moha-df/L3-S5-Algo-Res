@@ -35,37 +35,57 @@ int main(int argc, char *argv[])
 {
     if (argc != 3)
         usage(argv[0]);
-        
-    const char *ip_addr = argv[1]; // Adresse IP de destination
-    const char *port = argv[2];    // Port de destination
+    
+    /*
+        Passage des arguments dans des variables
+    */
+    const char *ip_addr = argv[1];
+    const char *port = argv[2];
 
-    //  Configuration de hints pour UDP
-    struct addrinfo *res, *p, hints = {0};
-    //struct addrinfo *res, hints = {0};
+    /*
+        On cree 3 structures
+        hints initialiser a 0 cest celle quon utilisera pour donner les directives
+        res pour stocker le resultat de getaddrinfo
+        p pour parcourir res a la creation du socket
+    */
+    struct addrinfo hints = {0};
+    struct addrinfo* res = NULL;
+    struct addrinfo* p = NULL;
 
-    hints.ai_family = AF_UNSPEC;    // IPv4 ou IPv6
-    hints.ai_socktype = SOCK_DGRAM; // mode paquet
-    hints.ai_protocol = IPPROTO_UDP; // Protocole UDP
-    hints.ai_flags =  AI_NUMERICSERV; 
+    /*
+        On donne les attribu a hints 
+        SOCK_DGRAM IPPROTO_UDP = udp
+        AI_NUMERICSERV = port numeric
+        AF_UNSPEC = IPV6 ou IPV4 on specifie pas car specifier pourrait faire un prblm idk why
+    */
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+    hints.ai_flags =  AI_NUMERICSERV;
 
-    //  Obtenir les informations d'adresse de l'hôte
+    /*
+        Lancement de getaddrinfo qui va remplir la structure res
+    */
     CHKA(getaddrinfo(ip_addr, port, &hints, &res));
 
-    //  Créer un socket UDP
+    /*
+        On parcour res pour cree un socket valide
+    */
     int sockfd = -1;
     while (p = res, p != NULL && sockfd == -1) {
         CHK((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)));
         p = p->ai_next;
     }
-    //int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    //CHK(sockfd);
 
-    //  Préparer le message et envoyer
+    /*
+        On send le message
+    */
     const char *message = "hello world";
-    CHK(sendto(sockfd, message, strlen(message), 0, p->ai_addr, p->ai_addrlen));
-    //CHK(sendto(sockfd, message, strlen(message), 0, res->ai_addr, res->ai_addrlen));
-
-    // Free la mémoire
+    CHK(sendto(sockfd, message, strlen(message), res->ai_flags, res->ai_addr, res->ai_addrlen));
+    
+    /*
+        Free
+    */
     freeaddrinfo(res);
 
     return 0;
