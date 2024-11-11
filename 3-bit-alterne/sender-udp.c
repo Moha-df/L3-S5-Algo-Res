@@ -62,9 +62,7 @@ void send_loop(int socket)
 
         // la condition à droite du OU est utile si la ligne est full-duplex,
         // ou en présence d'erreur sur contenu (cf. TD)
-        while (((r = recv(socket, &tmp, sizeof tmp, 0)) == -1 &&
-                errno == EAGAIN) ||
-               tmp.seq != m.seq)
+        while (((r = recv(socket, &tmp, sizeof tmp, 0)) == -1 && errno == EAGAIN) || tmp.seq != m.seq)
             // retransmission !
             CHK(send(socket, &m, 1 + n, 0));
         CHK(r);
